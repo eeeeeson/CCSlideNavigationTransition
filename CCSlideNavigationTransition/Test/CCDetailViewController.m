@@ -27,8 +27,18 @@
 {
     [super viewDidLoad];
     // Do any additional setup after loading the view.
-	self.view.backgroundColor = [UIColor blueColor];
+	self.view.backgroundColor = [CCAppDelegate randomColor];
 	self.title = @"Detail";
+	
+	UIButton *button = [CCAppDelegate createCustomButton:@"Pop Root"];
+	button.center = CGPointMake(self.view.frame.size.width / 2,self.view.frame.size.height / 2);
+	[button addTarget:self action:@selector(handleButtonClicked:) forControlEvents:UIControlEventTouchUpInside];
+	[self.view addSubview:button];
+}
+
+- (void)handleButtonClicked:(UIButton *)button
+{
+	[self.navigationController popToRootViewControllerAnimated:YES];
 }
 
 - (void)viewWillAppear:(BOOL)animated

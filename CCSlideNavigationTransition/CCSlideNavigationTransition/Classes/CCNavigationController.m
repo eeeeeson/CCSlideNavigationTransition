@@ -17,9 +17,11 @@ static const CGFloat kCCNavigationControllerPanVelocityPositiveThreshold = 300;
 static const CGFloat kCCNavigationControllerPanVelocityNegativeThreshold = - 300;
 static const CGFloat kCCNavigationControllerPanProgressThreshold = 0.3;
 
+static NSURL * _snapshotCacheURL = nil;
+static BOOL _cacheSnapshotImageInMemory = YES;
+
 @interface CCNavigationController () <UINavigationControllerDelegate>
 
-@property (nonatomic, strong) NSURL *snapshotCacheURL;
 @property (nonatomic, strong) UIView *backgroundView;
 @property (nonatomic, strong) UIImageView *previousSnapshotView;
 @property (nonatomic, assign) CGPoint gestureBeganPoint;
@@ -29,15 +31,25 @@ static const CGFloat kCCNavigationControllerPanProgressThreshold = 0.3;
 
 @implementation CCNavigationController
 
+- (void)dealloc
+{
+	[self.backgroundView removeFromSuperview];
+}
+
++ (void)initialize
+{
+	@autoreleasepool {
+		[[self class]removeCacheDirectory];//Application Launching Need To Clean All Disk Cache
+	}
+}
+
 - (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil
 {
     self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
     if (self) {
 		[[self class]setCacheSnapshotImageInMemory:NO];
 
-		NSArray *paths = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES);
-        _snapshotCacheURL = [NSURL fileURLWithPathComponents:@[[paths objectAtIndex:0], @"SnapshotCache"]];
-		[self createCacheDirectory];
+		[[self class] createCacheDirectory];
 
 		_previousSlideViewInitailOriginX = - 200;
 		_slidingPopEnable = YES;
@@ -68,21 +80,7 @@ static const CGFloat kCCNavigationControllerPanProgressThreshold = 0.3;
 	}
 }
 
-- (void)addPanGestureRecognizers
-{
-	UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc]initWithTarget:self
-																		 action:@selector(handlePanGestureRecognizer:)];
-    [self.view addGestureRecognizer:pan];
-	
-	UIScreenEdgePanGestureRecognizer * edgePan = [[UIScreenEdgePanGestureRecognizer alloc]initWithTarget:self
-																								  action:@selector(handlePanGestureRecognizer:)];
-	[self.view addGestureRecognizer:edgePan];
-}
-
-- (BOOL)isAboveIOS7
-{
-	return [[[UIDevice currentDevice] systemVersion] compare:@"7.0"] != NSOrderedAscending;
-}
+#pragma mark - UINavigationControllerDelegate
 
 - (id<UIViewControllerAnimatedTransitioning>)navigationController:(UINavigationController *)navigationController
                                   animationControllerForOperation:(UINavigationControllerOperation)operation
@@ -97,9 +95,23 @@ static const CGFloat kCCNavigationControllerPanProgressThreshold = 0.3;
 	return nil;
 }
 
-#pragma mark - Public
+#pragma mark - Helper
 
-static BOOL _cacheSnapshotImageInMemory = YES;
+- (BOOL)isAboveIOS7
+{
+	return [[[UIDevice currentDevice] systemVersion] compare:@"7.0"] != NSOrderedAscending;
+}
+
+- (NSString *)encodedFilePathForKey:(NSString *)key
+{
+    if (![key length]){
+		return nil;
+	}
+	
+    return [[[[self class]snapshotCacheURL] URLByAppendingPathComponent:[NSString stringWithUTF8String:[key UTF8String]]] path];
+}
+
+#pragma mark - Public
 
 + (BOOL)cacheSnapshotImageInMemory
 {
@@ -113,33 +125,85 @@ static BOOL _cacheSnapshotImageInMemory = YES;
 
 #pragma mark - Private
 
-- (NSString *)encodedFilePathForKey:(NSString *)key
++ (NSURL *)snapshotCacheURL
 {
-    if (![key length]){
-		return nil;
+	if (!_snapshotCacheURL) {
+		NSArray *paths = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES);
+		_snapshotCacheURL = [NSURL fileURLWithPathComponents:@[[paths objectAtIndex:0], @"SnapshotCache"]];
 	}
 	
-    return [[_snapshotCacheURL URLByAppendingPathComponent:[NSString stringWithUTF8String:[key UTF8String]]] path];
+	return _snapshotCacheURL;
 }
 
-- (BOOL)createCacheDirectory
++ (BOOL)createCacheDirectory
 {
-    if ([[NSFileManager defaultManager] fileExistsAtPath:[_snapshotCacheURL path]]) {
+    if ([[NSFileManager defaultManager] fileExistsAtPath:[[[self class]snapshotCacheURL] path]]) {
 		return NO;
 	}
 	
     NSError *error = nil;
-    BOOL success = [[NSFileManager defaultManager] createDirectoryAtURL:_snapshotCacheURL
+    BOOL success = [[NSFileManager defaultManager] createDirectoryAtURL:[[self class]snapshotCacheURL]
                                             withIntermediateDirectories:YES
                                                              attributes:nil
                                                                   error:&error];
     return success;
 }
 
++ (BOOL)removeCacheDirectory
+{
+	NSError *error = nil;
+	return [[NSFileManager defaultManager] removeItemAtURL:[[self class]snapshotCacheURL] error:&error];
+}
+
+
 - (void)setTransitioningProgress:(float)transitioningProgress
 {
 	_transitioningProgress = MIN(1,MAX(0, transitioningProgress));
-//	NSLog(@"transitioningProgress %f",transitioningProgress);
+}
+
+- (void)layoutViewsWithTransitioningProgress:(float)progress
+{
+	self.transitioningProgress = progress;
+	
+	CGRect frame = self.view.frame;
+	frame.origin.x = CGRectGetWidth([[UIScreen mainScreen] bounds]) * self.transitioningProgress;
+	self.view.frame = frame;
+	
+	CGRect previewFrame = self.previousSnapshotView.frame;
+    CGFloat offset = frame.origin.x * self.previousSlideViewInitailOriginX / previewFrame.size.width;
+	previewFrame.origin.x = self.previousSlideViewInitailOriginX - offset;
+    self.previousSnapshotView.frame = previewFrame;
+}
+
+- (void)excutePopAnimationWithDuration:(NSTimeInterval)duration completion:(void (^)(BOOL finish))completion
+{
+	[UIView animateWithDuration:duration animations:^{
+		[self layoutViewsWithTransitioningProgress:1];
+	} completion:^(BOOL finished) {
+		self.backgroundView.hidden = YES;
+		[self layoutViewsWithTransitioningProgress:0];
+		if (completion) {
+			completion(finished);
+		}
+	}];
+}
+
+- (void)createPreviousSnapshotView
+{
+	if (!self.backgroundView) {
+		self.backgroundView = [[UIView alloc]initWithFrame:self.view.bounds];
+		[self.view.superview insertSubview:self.backgroundView belowSubview:self.view];
+	}
+	self.backgroundView.hidden = NO;
+	
+	[self.previousSnapshotView removeFromSuperview];
+	self.previousSnapshotView = [[UIImageView alloc]initWithImage:[self snapshotForViewController:self.topViewController]];
+	
+	CGRect frame = self.backgroundView.bounds;
+	frame.origin.x = self.previousSlideViewInitailOriginX;
+	self.previousSnapshotView.frame = frame;
+	
+	[self.backgroundView addSubview:self.previousSnapshotView];
 }
 
 #pragma mark - Overwrite
@@ -149,15 +213,14 @@ static BOOL _cacheSnapshotImageInMemory = YES;
 	[self saveSnapshotImage:[self.view snapshotImage] forViewController:viewController];
 	
 	if (animated && !self.isUseSystemAnimatedTransitioning) {
-	
 		[self createPreviousSnapshotView];
 		self.previousSnapshotView.image = [self snapshotForViewController:viewController];
 		
 		[super pushViewController:viewController animated:NO];
 
-		[self layoutViewsWithSlideProgress:1];
+		[self layoutViewsWithTransitioningProgress:1];
 		[UIView animateWithDuration:kCCNavigationControllerSlidingAnimationDuration animations:^{
-			[self layoutViewsWithSlideProgress:0];
+			[self layoutViewsWithTransitioningProgress:0];
 		}];
 	} else {
 		[super pushViewController:viewController animated:animated];
@@ -166,18 +229,49 @@ static BOOL _cacheSnapshotImageInMemory = YES;
 
 - (UIViewController *)popViewControllerAnimated:(BOOL)animated
 {
-	[self removeSnapshotForViewController:self.topViewController];
+	UIViewController *popedViewController = nil;
+	if (animated && !self.isUseSystemAnimatedTransitioning && self.viewControllers.count > 1) {
+		[self createPreviousSnapshotView];
 
-    return [super popViewControllerAnimated:animated];
+		[self removeSnapshotForViewController:self.topViewController];
+		popedViewController = self.topViewController;
+		
+		[self layoutViewsWithTransitioningProgress:0];
+		[self excutePopAnimationWithDuration:kCCNavigationControllerSlidingAnimationDuration completion:^(BOOL finish) {
+			[super popViewControllerAnimated:NO];
+		}];
+	} else {
+		[self removeSnapshotForViewController:self.topViewController];
+		popedViewController = [super popViewControllerAnimated:animated];
+	}
+	
+	return popedViewController;
 }
 
 - (NSArray *)popToRootViewControllerAnimated:(BOOL)animated
 {
-	NSArray *popedController = [super popToRootViewControllerAnimated:animated];
-    for (UIViewController *controller in popedController) {
-        [self removeSnapshotForViewController:controller];
-    }
-	return popedController;
+	NSArray *popedControllers = nil;
+	if (animated && !self.isUseSystemAnimatedTransitioning && self.viewControllers.count > 1) {
+		[self createPreviousSnapshotView];
+		self.previousSnapshotView.image = [self snapshotForViewController:self.viewControllers[1]];
+
+		[self layoutViewsWithTransitioningProgress:0];
+		
+		NSMutableArray *mutablePopedControllers = [self.viewControllers mutableCopy];
+		[mutablePopedControllers removeObjectAtIndex:0];
+		popedControllers = mutablePopedControllers;
+
+		[self excutePopAnimationWithDuration:kCCNavigationControllerSlidingAnimationDuration completion:^(BOOL finish) {
+			[super popToRootViewControllerAnimated:NO];
+		}];
+	} else {
+		popedControllers = [super popToRootViewControllerAnimated:animated];
+	}
+
+	for (UIViewController *controller in popedControllers) {
+		[self removeSnapshotForViewController:controller];
+	}
+	return popedControllers;
 }
 
 #pragma mark - Snapshot
@@ -219,10 +313,21 @@ static BOOL _cacheSnapshotImageInMemory = YES;
 
 - (NSString *)cacheSnapshotImageKeyForViewController:(UIViewController *)controller
 {
-	return [NSString stringWithFormat:@"%lu_SnapshotImageKey",controller.hash];
+	return [NSString stringWithFormat:@"%lu_SnapshotImageKey.png",controller.hash];
 }
 
 #pragma mark - Event
+
+- (void)addPanGestureRecognizers
+{
+	UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc]initWithTarget:self
+																		 action:@selector(handlePanGestureRecognizer:)];
+    [self.view addGestureRecognizer:pan];
+	
+	UIScreenEdgePanGestureRecognizer * edgePan = [[UIScreenEdgePanGestureRecognizer alloc]initWithTarget:self
+																								  action:@selector(handlePanGestureRecognizer:)];
+	[self.view addGestureRecognizer:edgePan];
+}
 
 - (void)handlePanGestureRecognizer:(UIPanGestureRecognizer *)pan
 {
@@ -239,12 +344,15 @@ static BOOL _cacheSnapshotImageInMemory = YES;
 			self.gestureBeganPoint = point;
 			[self createPreviousSnapshotView];
 		} break;
+		
 		case UIGestureRecognizerStateChanged:
 		{
-			[self layoutViewsWithSlideProgress:self.transitioningProgress];
+			[self layoutViewsWithTransitioningProgress:self.transitioningProgress];
 		}break;
+		
 		case UIGestureRecognizerStateEnded:
 		case UIGestureRecognizerStateCancelled:
+		case UIGestureRecognizerStateFailed:
 		{
 			CGPoint velocity = [pan velocityInView:pan.view];
 			BOOL isFastPositiveSwipe = velocity.x > kCCNavigationControllerPanVelocityPositiveThreshold;
@@ -253,54 +361,19 @@ static BOOL _cacheSnapshotImageInMemory = YES;
 																				   : kCCNavigationControllerSlidingAnimationDuration;
 
 			if ((self.transitioningProgress > kCCNavigationControllerPanProgressThreshold && !isFastNegativeSwipe) || isFastPositiveSwipe) {
-				[UIView animateWithDuration:duration animations:^{
-					[self layoutViewsWithSlideProgress:1];
-				} completion:^(BOOL finished) {
-					self.backgroundView.hidden = YES;
+				[self excutePopAnimationWithDuration:duration completion:^(BOOL finish) {
 					[self popViewControllerAnimated:NO];
-					[self layoutViewsWithSlideProgress:0];
 				}];
 			} else {
 				[UIView animateWithDuration:duration animations:^{
-									 [self layoutViewsWithSlideProgress:0];
+									 [self layoutViewsWithTransitioningProgress:0];
 								 }];
 			}
 		}break;
+
 		default:
 			break;
 	}
-}
-
-- (void)createPreviousSnapshotView
-{
-	if (!self.backgroundView) {
-		self.backgroundView = [[UIView alloc]initWithFrame:self.view.bounds];
-		[self.view.superview insertSubview:self.backgroundView belowSubview:self.view];
-	}
-	self.backgroundView.hidden = NO;
-
-	[self.previousSnapshotView removeFromSuperview];
-	self.previousSnapshotView = [[UIImageView alloc]initWithImage:[self snapshotForViewController:self.topViewController]];
-	
-	CGRect frame = self.backgroundView.bounds;
-	frame.origin.x = self.previousSlideViewInitailOriginX;
-	self.previousSnapshotView.frame = frame;
-	
-	[self.backgroundView addSubview:self.previousSnapshotView];
-}
-
-- (void)layoutViewsWithSlideProgress:(float)progress
-{
-	self.transitioningProgress = progress;
-	
-	CGRect frame = self.view.frame;
-	frame.origin.x = CGRectGetWidth([[UIScreen mainScreen] bounds]) * self.transitioningProgress;
-	self.view.frame = frame;
-	
-	CGRect previewFrame = self.previousSnapshotView.frame;
-    CGFloat offset = frame.origin.x * self.previousSlideViewInitailOriginX / previewFrame.size.width;
-	previewFrame.origin.x = self.previousSlideViewInitailOriginX - offset;
-    self.previousSnapshotView.frame = previewFrame;
 }
 
 @end

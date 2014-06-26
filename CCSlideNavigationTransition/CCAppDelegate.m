@@ -23,6 +23,21 @@
     return YES;
 }
 
++ (UIButton *)createCustomButton:(NSString *)title
+{
+	UIButton *button = [[UIButton alloc]init];
+	[button setTitle:title forState:UIControlStateNormal];
+	[button setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+	[button sizeToFit];
+	button.backgroundColor = [[self class]randomColor];
+	return button;
+}
+
++ (UIColor *)randomColor
+{
+	return [UIColor colorWithRed:(arc4random() % 255 )/ 255.f green:(arc4random() % 255 )/ 255.f blue:(arc4random() % 255 )/ 255.f alpha:1];
+}
+
 - (void)applicationWillResignActive:(UIApplication *)application
 {
 	// Sent when the application is about to move from active to inactive state. This can occur for certain types of temporary interruptions (such as an incoming phone call or SMS message) or when the user quits the application and it begins the transition to the background state.

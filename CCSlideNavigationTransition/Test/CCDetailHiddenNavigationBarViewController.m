@@ -28,19 +28,14 @@
 {
     [super viewDidLoad];
     // Do any additional setup after loading the view.
-	self.view.backgroundColor = [UIColor whiteColor];
+	self.view.backgroundColor = [CCAppDelegate randomColor];
 	self.title = @"Detail";
 
-	UIButton *button = [[UIButton alloc]init];
-	[button setTitle:@"Go Detail" forState:UIControlStateNormal];
-	[button setTitleColor:[UIColor blackColor] forState:UIControlStateNormal];
-	[button sizeToFit];
-	button.backgroundColor = [UIColor orangeColor];
+	UIButton *button = [CCAppDelegate createCustomButton:@"Go Detail"];
 	button.center = CGPointMake(self.view.frame.size.width / 2,self.view.frame.size.height / 2);
 	[button addTarget:self action:@selector(handleButtonClicked:) forControlEvents:UIControlEventTouchUpInside];
 	[self.view addSubview:button];
 }
-
 
 - (void)handleButtonClicked:(UIButton *)button
 {

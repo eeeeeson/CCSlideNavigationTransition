@@ -12,4 +12,7 @@
 
 @property (strong, nonatomic) UIWindow *window;
 
++ (UIButton *)createCustomButton:(NSString *)title;
++ (UIColor *)randomColor;
+
 @end
