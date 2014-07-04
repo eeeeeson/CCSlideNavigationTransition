@@ -13,6 +13,7 @@
 @property (nonatomic, assign) CGFloat previousSlideViewInitailOriginX;
 @property (nonatomic, assign, getter = isSlidingPopEnable) BOOL slidingPopEnable;							  //Default YES
 @property (nonatomic, assign, getter = isUseSystemAnimatedTransitioning) BOOL useSystemAnimatedTransitioning; //Default NO
+@property (nonatomic, assign) BOOL edgePopGestureOnly;
 
 + (void)setCacheSnapshotImageInMemory:(BOOL)cacheSnapshotImageInMemory;
 
