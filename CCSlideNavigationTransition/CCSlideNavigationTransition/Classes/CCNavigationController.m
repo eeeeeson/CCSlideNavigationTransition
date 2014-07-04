@@ -54,6 +54,7 @@ static BOOL _cacheSnapshotImageInMemory = YES;
 		_previousSlideViewInitailOriginX = - 200;
 		_slidingPopEnable = YES;
 		_useSystemAnimatedTransitioning = NO;
+        _edgePopGestureOnly = YES;
     }
     return self;
 }
@@ -313,20 +314,23 @@ static BOOL _cacheSnapshotImageInMemory = YES;
 
 - (NSString *)cacheSnapshotImageKeyForViewController:(UIViewController *)controller
 {
-	return [NSString stringWithFormat:@"%lu_SnapshotImageKey.png",controller.hash];
+	return [NSString stringWithFormat:@"%lu_SnapshotImageKey.png", (unsigned long)controller.hash];
 }
 
 #pragma mark - Event
 
 - (void)addPanGestureRecognizers
 {
-	UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc]initWithTarget:self
-																		 action:@selector(handlePanGestureRecognizer:)];
-    [self.view addGestureRecognizer:pan];
-	
-	UIScreenEdgePanGestureRecognizer * edgePan = [[UIScreenEdgePanGestureRecognizer alloc]initWithTarget:self
-																								  action:@selector(handlePanGestureRecognizer:)];
-	[self.view addGestureRecognizer:edgePan];
+    if (self.edgePopGestureOnly && NSClassFromString(@"UIScreenEdgePanGestureRecognizer")) {
+        UIScreenEdgePanGestureRecognizer * edgePan = [[UIScreenEdgePanGestureRecognizer alloc]initWithTarget:self
+                                                                                                      action:@selector(handlePanGestureRecognizer:)];
+        edgePan.edges = UIRectEdgeLeft;
+        [self.view addGestureRecognizer:edgePan];
+    } else {
+        UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc]initWithTarget:self
+                                                                             action:@selector(handlePanGestureRecognizer:)];
+        [self.view addGestureRecognizer:pan];
+    }
 }
 
 - (void)handlePanGestureRecognizer:(UIPanGestureRecognizer *)pan
