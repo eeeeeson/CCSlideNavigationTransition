@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>IDESourceControlProjectFavoriteDictionaryKey</key>
+	<false/>
+	<key>IDESourceControlProjectIdentifier</key>
+	<string>BD64DA4C-4DA1-478E-8B20-A5995D73AE10</string>
+	<key>IDESourceControlProjectName</key>
+	<string>CCSlideNavigationTransition</string>
+	<key>IDESourceControlProjectOriginsDictionary</key>
+	<dict>
+		<key>8590F42C-90D9-4A5A-98F7-C216E19757C3</key>
+		<string>https://github.com/esonchen/CCSlideNavigationTransition.git</string>
+	</dict>
+	<key>IDESourceControlProjectPath</key>
+	<string>CCSlideNavigationTransition.xcodeproj/project.xcworkspace</string>
+	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
+	<dict>
+		<key>8590F42C-90D9-4A5A-98F7-C216E19757C3</key>
+		<string>../..</string>
+	</dict>
+	<key>IDESourceControlProjectURL</key>
+	<string>https://github.com/esonchen/CCSlideNavigationTransition.git</string>
+	<key>IDESourceControlProjectVersion</key>
+	<integer>110</integer>
+	<key>IDESourceControlProjectWCCIdentifier</key>
+	<string>8590F42C-90D9-4A5A-98F7-C216E19757C3</string>
+	<key>IDESourceControlProjectWCConfigurations</key>
+	<array>
+		<dict>
+			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
+			<string>public.vcs.git</string>
+			<key>IDESourceControlWCCIdentifierKey</key>
+			<string>8590F42C-90D9-4A5A-98F7-C216E19757C3</string>
+			<key>IDESourceControlWCCName</key>
+			<string>CCSlideNavigationTransition</string>
+		</dict>
+	</array>
+</dict>
+</plist>
