@@ -3,4 +3,4 @@ CCSlideNavigationTransition
 
 Custom Sliding AnimatedTransitioning For UINavigationController 
 
-![Demo](snapshot.png)
+![Demo](snapshot.gif)
