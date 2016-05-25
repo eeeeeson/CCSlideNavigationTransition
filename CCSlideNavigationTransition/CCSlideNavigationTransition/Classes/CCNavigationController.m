@@ -193,8 +193,10 @@ static BOOL _cacheSnapshotImageInMemory = YES;
 {
 	if (!self.backgroundView) {
 		self.backgroundView = [[UIView alloc]initWithFrame:self.view.bounds];
-		[self.view.superview insertSubview:self.backgroundView belowSubview:self.view];
 	}
+    if (!self.backgroundView.window) {
+        [self.view.superview insertSubview:self.backgroundView belowSubview:self.view];
+    }
 	self.backgroundView.hidden = NO;
 	
 	[self.previousSnapshotView removeFromSuperview];
